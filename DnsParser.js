@@ -24,11 +24,15 @@ var DnsPacket = function DnsPacket () {
     this.additional = null;
 };
 
+exports.DnsPacket = DnsPacket;
+
 var DnsParser = function (/*Buffer*/ pkt) {
     this.buffer = new BufferIterator(pkt);
     this.packet = new DnsPacket();
     this.pointerStack = [];  // stack to keep track of previous positions before pointer jumping
 };
+
+exports.DnsParser = DnsParser;
 
 DnsParser.prototype.parseHeader = function () {
     // Read header
@@ -61,7 +65,7 @@ var isPointer = function (len) {
 };
 
 // Parse domain name lable into a string
-DnsParse.prototype.parseLable = function () {
+DnsParser.prototype.parseLable = function () {
     var len = this.buffer.readBytesAsNumber(1);
     return this.buffer.readBytesAsString(len);
 };
@@ -76,17 +80,17 @@ DnsParser.prototype.parseDomainName = function () {
 	    var off = (this.buffer.readBytesAsNumber(2)) & OFFSET_MASK;
 	    this.pointerStack.push(this.offset);  // save current offset
 	    this.buffer.seek(off);  // pointer jump
-	    name += this.buffer.parseDomainName() + '.';  // parse domain name at that position until we reach zero-bytes
+	    name += this.parseDomainName();  // parse domain name at that position until we reach zero-bytes
 	    var old_off = this.pointerStack.pop();
 	    this.buffer.seek(old_off);  // recover offset
 	    return name;  // we are done with this name. There is no zero-byte after the pointer
 	} else {
-	    name += this.buffer.parseLable() + '.';
+	    name += this.parseLable() + '.';
 	}
     }
 
     // Read ending byte
-    this.buffer.seek(this.offset + 1);
+    this.buffer.advance(1);
     return name;
 };
 
@@ -112,9 +116,9 @@ var RR_TYPE_NDNCERT = 65431;
 var RR_TYPE_NDNCERTSEQ = 65432;
 var RR_TYPE_NDNAUTH = 65433;
 
-DnsParser.prototype.parseRData = function (type, class, rdlength) {
-    if (class != RR_CLASS_IN)
-	throw new Error("Unknown DNS RR class: " + class);
+DnsParser.prototype.parseRData = function (type, clss, rdlength) {
+    if (clss != RR_CLASS_IN)
+	throw new Error("Unknown DNS RR class: " + clss);
 
     switch (type) {
     case RR_TYPE_NS:
@@ -164,10 +168,10 @@ DnsParser.prototype.parseRR = function () {
     var obj = new Object();
     obj.name = this.parseDomainName();
     obj.type = this.buffer.readBytesAsNumber(2);
-    obj.class = this.buffer.readBytesAsNumber(2);
+    obj.clss = this.buffer.readBytesAsNumber(2);  // class is a keyword reserved by JavaScript :(
     obj.ttl = this.buffer.readBytesAsNumber(4);
     obj.rdlength = this.buffer.readBytesAsNumber(2);
-    obj.rdata = this.parseRData(obj.type, obj.class, obj.rdlength);
+    obj.rdata = this.parseRData(obj.type, obj.clss, obj.rdlength);
     return obj;
 };
 
@@ -177,22 +181,22 @@ DnsParser.prototype.parse = function () {
     
     // Read question section
     for (var i = 0; i < this.packet.header.qdcount; i++) {
-	this.question[i] = this.parseQuestion();
+	this.packet.question[i] = this.parseQuestion();
     }
 
     // Read answer section
     for (var i = 0; i < this.packet.header.ancount; i++) {
-	this.answer[i] = this.parseRR();
+	this.packet.answer[i] = this.parseRR();
     }
 
     // Read authority section
     for (var i = 0; i < this.packet.header.nscount; i++) {
-	this.authority[i] = this.parseRR();
+	this.packet.authority[i] = this.parseRR();
     }
 
     // Read additional section
     for (var i = 0; i < this.packet.header.arcount; i++) {
-	this.additional[i] = this.parseRR();
+	this.packet.additional[i] = this.parseRR();
     }
 
     return this.packet;

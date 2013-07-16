@@ -24,8 +24,8 @@ BufferIterator.prototype.readBytes = function (length) {
  * @param {number} length The number of bytes to read.
  * @returns {string}
  */
-BufferIterator.prototype.readBytesAsNumber = function (length) {
-    return this.readBytes(length).toString('hex');
+BufferIterator.prototype.readBytesAsString = function (length) {
+    return this.readBytes(length).toString('ascii');
 };
 
 
@@ -39,7 +39,7 @@ BufferIterator.prototype.readBytesAsNumber = function (length) {
 BufferIterator.prototype.readBytesAsNumber = function (length) {
     if (length > 4)
 	return null; // number overflow
-
+    
     return parseInt(this.readBytes(length).toString('hex'), 16);
 };
 
@@ -54,4 +54,8 @@ BufferIterator.prototype.peek = function () {
 
 BufferIterator.prototype.seek = function (offset) {
     this.offset = offset;
+};
+
+BufferIterator.prototype.advance = function (step) {
+    this.offset += step;
 };
