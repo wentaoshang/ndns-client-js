@@ -1,5 +1,6 @@
 var BufferIterator = function BufferIterator(/*Buffer*/ buf) {
     this.buffer = buf;
+    this.length = buf.length;
     this.offset = 0;
 };
 

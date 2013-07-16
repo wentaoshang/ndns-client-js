@@ -59,6 +59,7 @@ DnsParser.prototype.parseHeader = function () {
 
 var POINTER_MASK = 0xC0;  // b'11000000'
 var OFFSET_MASK = 0x3F;  // b'00111111'
+var POINTER_STACK_THRESHOLD = 10;
 
 var isPointer = function (len) {
     return (len & POINTER_MASK) === POINTER_MASK;
@@ -78,6 +79,10 @@ DnsParser.prototype.parseDomainName = function () {
 	var len = this.buffer.peek();
 	if (isPointer(len)) {
 	    var off = (this.buffer.readBytesAsNumber(2)) & OFFSET_MASK;
+	    if (off >= this.buffer.length)
+		throw new Error('Mal-formated domain name pointer. Offset out of range.');
+	    if (this.pointerStack.length > POINTER_STACK_THRESHOLD)
+		throw new Error('Too many level of pointers.');
 	    this.pointerStack.push(this.buffer.offset);  // save current offset
 	    this.buffer.seek(off);  // pointer jump
 	    name += this.parseDomainName();  // parse domain name at that position until we reach zero-bytes
@@ -175,9 +180,15 @@ DnsParser.prototype.parseRR = function () {
     return obj;
 };
 
+var DNS_SECTION_THRESHOLD = 10;
+
 DnsParser.prototype.parse = function () {
     // Read header
     this.parseHeader();
+
+    if (this.packet.header.qdcount > DNS_SECTION_THRESHOLD || this.packet.header.ancount > DNS_SECTION_THRESHOLD 
+	|| this.packet.header.nscount > DNS_SECTION_THRESHOLD || this.packet.header.arcount > DNS_SECTION_THRESHOLD)
+	throw new Error('Too many sections in the DNS packet. Stop parsing.');
     
     // Read question section
     for (var i = 0; i < this.packet.header.qdcount; i++) {
