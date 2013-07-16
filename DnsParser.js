@@ -78,7 +78,7 @@ DnsParser.prototype.parseDomainName = function () {
 	var len = this.buffer.peek();
 	if (isPointer(len)) {
 	    var off = (this.buffer.readBytesAsNumber(2)) & OFFSET_MASK;
-	    this.pointerStack.push(this.offset);  // save current offset
+	    this.pointerStack.push(this.buffer.offset);  // save current offset
 	    this.buffer.seek(off);  // pointer jump
 	    name += this.parseDomainName();  // parse domain name at that position until we reach zero-bytes
 	    var old_off = this.pointerStack.pop();

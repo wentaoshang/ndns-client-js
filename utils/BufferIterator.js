@@ -59,3 +59,7 @@ BufferIterator.prototype.seek = function (offset) {
 BufferIterator.prototype.advance = function (step) {
     this.offset += step;
 };
+
+BufferIterator.prototype.endOfBuffer = function () {
+    return this.offset == this.buffer.length;
+};

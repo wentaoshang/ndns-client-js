@@ -11,6 +11,7 @@ var onData = function (inst, co) {
 
     console.log(packet);
     console.log(packet.answer[0].rdata);
+    console.log(parser.buffer.endOfBuffer());
     
     ndnHandle.close();  // This will cause the script to quit
 };
