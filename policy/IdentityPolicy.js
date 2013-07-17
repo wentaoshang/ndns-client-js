@@ -30,6 +30,8 @@ IdentityPolicy.prototype.verify = function (data, callback) {
 
     var self = this;
 
+    var chain_length = 0;
+
     var verifyStack = function (/*Key*/ rootKey) {
 	var result;
 	var i;
@@ -54,6 +56,12 @@ IdentityPolicy.prototype.verify = function (data, callback) {
     };
 
     var onData = function (inst, co) {
+	chain_length++;
+	if (chain_length > self.chain_limit) {
+	    console.log('Abort identity verification due to over-limit chain length.');
+	    callback(VerifyResult.FAILURE);  // TODO: add a new status flag for this type of failure
+	}
+
 	var loc = co.signedInfo.locator;
 	if (loc.type == ndn.KeyLocatorType.KEYNAME) {
 	    var keyName = loc.keyName.name;
