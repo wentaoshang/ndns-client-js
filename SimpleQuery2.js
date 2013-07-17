@@ -1,0 +1,51 @@
+var DnsParser = require('./DnsParser.js').DnsParser;
+var ndn = require('ndn-on-node');
+var policy = require('./policy/IdentityPolicy').NdnsPolicy;
+var VerifyResult = require('./policy/IdentityPolicy').VerifyResult;
+
+var onData = function (inst, co) {
+    console.log('Data name: ' + co.name.to_uri());
+    console.log('Content: \n' + co.to_xml());
+
+    policy.verify(co, function (result) {
+	    if (result == VerifyResult.SUCCESS) {
+		var parser = new DnsParser(co.content);
+		
+		try {
+		    var packet = parser.parse();
+		    
+		    console.log(packet);
+		    console.log(packet.answer[0].rdata);
+		    console.log(parser.buffer.endOfBuffer());
+		} catch (e) {
+		    // Content is not a DNS packet.
+		    console.log('not a DNS packet.');
+		}
+	    } else if (result == VerifyResult.FAILURE)
+		console.log('Verification failed.');
+	    else if (result == VerifyResult.TIMEOUT)
+		console.log('Verification failed due to timeout.');
+
+	    ndnHandle.close();
+	});
+};
+
+var onTimeout = function (interest) {
+    console.log("Interest time out.");
+    console.log('Interest name: ' + interest.name.to_uri());
+    ndnHandle.close();
+};
+
+var ndnHandle = new ndn.NDN();
+
+ndnHandle.onopen = function () {
+    var n = new ndn.Name('/ndn/ucla.edu/DNS/NS');
+    var template = new ndn.Interest();
+    template.answerOriginKind = ndn.Interest.ANSWER_NO_CONTENT_STORE;  // bypass cache in ccnd
+    template.interestLifetime = 4000;
+    ndnHandle.expressInterest(n, template, onData, onTimeout);
+};
+
+ndnHandle.connect();
+
+console.log('Started...');
