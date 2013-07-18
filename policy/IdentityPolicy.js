@@ -60,6 +60,8 @@ IdentityPolicy.prototype.verify = function (data, callback) {
 	if (chain_length > self.chain_limit) {
 	    console.log('Abort identity verification due to over-limit chain length.');
 	    callback(VerifyResult.FAILURE);  // TODO: add a new status flag for this type of failure
+	    handle.close();
+	    return;
 	}
 
 	var loc = co.signedInfo.locator;
@@ -77,7 +79,8 @@ IdentityPolicy.prototype.verify = function (data, callback) {
 
 	    if (self.authorize_by_rules(co.name, keyName) == false) {
 		console.log('Verification suspended because policy rule checking failed.');
-		//callback(VerifyResult.FAILURE);
+		callback(VerifyResult.FAILURE);
+		handle.close();
 		return;
 	    }
 
