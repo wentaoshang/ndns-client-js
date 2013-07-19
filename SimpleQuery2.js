@@ -3,6 +3,9 @@ var ndn = require('ndn-on-node');
 var policy = require('./policy/IdentityPolicy').NdnsPolicy;
 var VerifyResult = require('./policy/IdentityPolicy').VerifyResult;
 
+if (process.argv.length != 3)
+    throw new Error('must specify an NDNS name as a command-line parameter.');
+
 var onData = function (inst, co) {
     console.log('Data name: ' + co.name.to_uri());
     console.log('Content: \n' + co.to_xml());
@@ -19,6 +22,7 @@ var onData = function (inst, co) {
 		    console.log(parser.buffer.endOfBuffer());
 		} catch (e) {
 		    // Content is not a DNS packet.
+		    console.log(e.message);
 		    console.log('not a DNS packet.');
 		}
 	    } else if (result == VerifyResult.FAILURE)
@@ -39,7 +43,7 @@ var onTimeout = function (interest) {
 var ndnHandle = new ndn.NDN();
 
 ndnHandle.onopen = function () {
-    var n = new ndn.Name('/ndn/ucla.edu/DNS/NS');
+    var n = new ndn.Name(process.argv[2]);
     var template = new ndn.Interest();
     template.answerOriginKind = ndn.Interest.ANSWER_NO_CONTENT_STORE;  // bypass cache in ccnd
     template.interestLifetime = 4000;

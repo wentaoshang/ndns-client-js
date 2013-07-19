@@ -1,3 +1,4 @@
+var ndn = require('ndn-on-node');
 var BufferIterator = require('./utils/BufferIterator.js').BufferIterator;
 
 var DnsPacket = function DnsPacket () {
