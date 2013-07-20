@@ -17,8 +17,7 @@ var onData = function (inst, co) {
 		try {
 		    var packet = parser.parse();
 		    
-		    console.log(packet);
-		    console.log(packet.answer[0].rdata);
+		    console.log(require('util').inspect(packet, {depth: 5}));
 		    console.log(parser.buffer.endOfBuffer());
 		} catch (e) {
 		    // Content is not a DNS packet.
