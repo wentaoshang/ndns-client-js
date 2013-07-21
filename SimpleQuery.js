@@ -1,6 +1,9 @@
 var DnsParser = require('./DnsParser.js').DnsParser;
 var ndn = require('ndn-on-node');
 
+if (process.argv.length != 3)
+    throw new Error('must specify an NDNS name as a command-line parameter.');
+
 var dataStack = [];  // stack to hold unverified content object
 
 var onData = function (inst, co) {
@@ -63,9 +66,8 @@ var onTimeout = function (interest) {
 var ndnHandle = new ndn.NDN();
 
 ndnHandle.onopen = function () {
-    var n = new ndn.Name('/ndn/ucla.edu/DNS/NS');
+    var n = new ndn.Name(process.argv[2]);
     var template = new ndn.Interest();
-    template.answerOriginKind = ndn.Interest.ANSWER_NO_CONTENT_STORE;  // bypass cache in ccnd
     template.interestLifetime = 4000;
     ndnHandle.expressInterest(n, template, onData, onTimeout);
 };

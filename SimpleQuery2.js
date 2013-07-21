@@ -44,7 +44,6 @@ var ndnHandle = new ndn.NDN();
 ndnHandle.onopen = function () {
     var n = new ndn.Name(process.argv[2]);
     var template = new ndn.Interest();
-    template.answerOriginKind = ndn.Interest.ANSWER_NO_CONTENT_STORE;  // bypass cache in ccnd
     template.interestLifetime = 4000;
     ndnHandle.expressInterest(n, template, onData, onTimeout);
 };

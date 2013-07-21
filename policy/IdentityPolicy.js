@@ -87,7 +87,6 @@ IdentityPolicy.prototype.verify = function (data, callback) {
 	    // Rule checking passed. Go to fetch the key data.
 	    dataStack.push(co);
 	    var template = new ndn.Interest();
-	    template.answerOriginKind = ndn.Interest.ANSWER_NO_CONTENT_STORE;  // bypass cache in ccnd
 	    template.interestLifetime = 4000;
 	    handle.expressInterest(keyName, template, onData, onTimeout);
 	} else if (loc.type == ndn.KeyLocatorType.KEY) {
