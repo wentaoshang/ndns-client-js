@@ -111,27 +111,31 @@ DnsParser.prototype.parseQuestion = function () {
 
 var RR_CLASS_IN = 1;
 
+var RRType = {
 // These are from the DNS standards
-var RR_TYPE_NS = 2;
-var RR_TYPE_SOA = 6;
+NS: 2,
+SOA: 6,
 
 // These are defined by ndns
-var RR_TYPE_FH = 65429;
-var RR_TYPE_NEXISTS = 65430;
-var RR_TYPE_NDNCERT = 65431;
-var RR_TYPE_NDNCERTSEQ = 65432;
-var RR_TYPE_NDNAUTH = 65433;
+FH: 65429,
+NEXISTS: 65430,
+NDNCERT: 65431,
+NDNCERTSEQ: 65432,
+NDNAUTH: 65433
+};
+
+exports.RRType = RRType;
 
 DnsParser.prototype.parseRData = function (type, clss, rdlength) {
     if (clss != RR_CLASS_IN)
 	throw new Error("Unknown DNS RR class: " + clss);
 
     switch (type) {
-    case RR_TYPE_NS:
+    case RRType.NS:
 	var obj = new Object();
 	obj.nsdname = this.parseDomainName();
 	return obj;
-    case RR_TYPE_SOA:
+    case RRType.SOA:
 	var obj = new Object();
 	obj.mname = this.parseDomainName();
 	obj.rname = this.parseDomainName();
@@ -141,26 +145,26 @@ DnsParser.prototype.parseRData = function (type, clss, rdlength) {
 	obj.expire = this.buffer.readBytesAsNumber(4);
 	obj.minimum = this.buffer.readBytesAsNumber(4);
 	return obj;
-    case RR_TYPE_FH:
+    case RRType.FH:
 	var obj = new Object();
 	obj.priority = this.buffer.readBytesAsNumber(2);
 	obj.weight = this.buffer.readBytesAsNumber(2);
 	var name_ccnb = this.buffer.readBytes(rdlength - 4);
 	obj.hint = ndn.Name.parse(name_ccnb);
 	return obj;
-    case RR_TYPE_NEXISTS:
+    case RRType.NEXISTS:
 	return {};
-    case RR_TYPE_NDNCERT:
+    case RRType.NDNCERT:
 	var obj = new Object();
 	var co_ccnb = this.buffer.readBytes(rdlength);
 	obj.cert = ndn.ContentObject.parse(co_ccnb);
 	return obj;
-    case RR_TYPE_NDNCERTSEQ:
+    case RRType.NDNCERTSEQ:
 	var obj = new Object();
 	var name_ccnb = this.buffer.readBytes(rdlength);
 	obj.seq = ndn.Name.parse(name_ccnb);
 	return obj;
-    case RR_TYPE_NDNAUTH:
+    case RRType.NDNAUTH:
 	var obj = new Object();
 	var name_ccnb = this.buffer.readBytes(rdlength);
 	obj.zoneName = ndn.Name.parse(name_ccnb);
