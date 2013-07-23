@@ -81,61 +81,61 @@ handle.onopen = function () {
 	console.log('Data name: ' + co.name.to_uri());
 	//console.log('Content: \n' + co.to_xml());
 	
-    policy.verify(co, function (result) {
-	    if (result == VerifyResult.FAILURE) {
-		console.log('Verification failed.');
-		return;
-	    } else if (result == VerifyResult.TIMEOUT) {
-		console.log('Verification failed due to timeout.');
-		return;
-	    }
-	    
-	    if (lastq) {
-		console.log('Result found.');
-		handle.close();
-		return;
-	    }
-
-
-	    var parser = new DnsParser(co.content);
-	
-	    try {
-		var packet = parser.parse();
-	    
-		//console.log(require('util').inspect(packet, {depth: 5}));
-		//console.log(parser.buffer.endOfBuffer());
-
-		if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NS) {
-		    var target = packet.answer[0].rdata.nsdname;
-		    target = relativize(target, dnsify(zone));
-		    rrtype = 'FH';
-		    var qfh = generateQuestion(hint, zone, target, rrtype);
-		    handle.expressInterest(qfh, null, onData, onTimeout);
-		} else if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NEXISTS) {
-		    console.log('NS does not exist.');
-		    rrtype = question[question.length - 1];
-		    var last = generateQuestion(hint, zone);
-		    for (var i = iter; i < question.length; i++) {
-			last.append(question[i]);
-		    }
-		    lastq = true;
-		    handle.expressInterest(last, null, onData, onTimeout);
-		} else if (rrtype == 'FH' && packet.answer.length > 0 && packet.answer[0].type == RRType.FH) {
-		    hint = packet.answer[0].rdata.hint;
-		    rrtype = 'NS';
-		    zone.append(question[iter++]);
-		    var qns = generateQuestion(hint, zone, question[iter], rrtype);
-		    handle.expressInterest(qns, null, onData, onTimeout);
+	policy.verify(co, function (result) {
+		if (result == VerifyResult.FAILURE) {
+		    console.log('Verification failed.');
+		    return;
+		} else if (result == VerifyResult.TIMEOUT) {
+		    console.log('Verification failed due to timeout.');
+		    return;
 		}
-	    } catch (e) {
-		// Content is not a DNS packet.
-		console.log(e.message);
-		console.log('not a DNS packet.');
-		handle.close();
-	    }
-	});
-    };
+	    
+		if (lastq) {
+		    console.log('Result found.');
+		    handle.close();
+		    return;
+		}
 
+
+		var parser = new DnsParser(co.content);
+	
+		try {
+		    var packet = parser.parse();
+	    
+		    //console.log(require('util').inspect(packet, {depth: 5}));
+		    //console.log(parser.buffer.endOfBuffer());
+
+		    if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NS) {
+			var target = packet.answer[0].rdata.nsdname;
+			target = relativize(target, dnsify(zone));
+			rrtype = 'FH';
+			var qfh = generateQuestion(hint, zone, target, rrtype);
+			handle.expressInterest(qfh, null, onData, onTimeout);
+		    } else if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NEXISTS) {
+			console.log('NS does not exist.');
+			rrtype = question[question.length - 1];
+			var last = generateQuestion(hint, zone);
+			for (var i = iter; i < question.length; i++) {
+			    last.append(question[i]);
+			}
+			lastq = true;
+			handle.expressInterest(last, null, onData, onTimeout);
+		    } else if (rrtype == 'FH' && packet.answer.length > 0 && packet.answer[0].type == RRType.FH) {
+			hint = packet.answer[0].rdata.hint;
+			rrtype = 'NS';
+			zone.append(question[iter++]);
+			var qns = generateQuestion(hint, zone, question[iter], rrtype);
+			handle.expressInterest(qns, null, onData, onTimeout);
+		    }
+		} catch (e) {
+		    // Content is not a DNS packet.
+		    console.log(e.message);
+		    console.log('not a DNS packet.');
+		    handle.close();
+		}
+	    });
+    };
+    
     var q = generateQuestion(hint, zone, question[iter], rrtype);
     handle.expressInterest(q, null, onData, onTimeout);
 };
