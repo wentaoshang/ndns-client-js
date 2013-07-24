@@ -4,7 +4,7 @@ var ndn = require('ndn-on-node');
 var policy = require('./policy/IdentityPolicy').NdnsPolicy;
 var VerifyResult = require('./policy/IdentityPolicy').VerifyResult;
 
-if (process.argv.length != 3)
+if (process.argv.length != 4)
     throw new Error('must specify an NDNS name as a command-line parameter.');
 
 
@@ -67,77 +67,91 @@ var generateQuestion = function (hint, zone, lable, rrtype) {
     return q;
 };
 
-var handle = new ndn.NDN();
+var IterativeQuery = function IterativeQuery() {};
 
-handle.onopen = function () {
-    var question = (process.argv[2]).split('/').slice(1);
-    var iter = 0;
-    var rrtype = 'NS';
-    var zone = new ndn.Name();
-    var hint = new ndn.Name();
-    var lastq = false;
+IterativeQuery.query = function (o_name, o_rrtype) {
 
-    var onData = function (inst, co) {
-	console.log('Data name: ' + co.name.to_uri());
-	//console.log('Content: \n' + co.to_xml());
+    var handle = new ndn.NDN();
+
+    handle.onopen = function () {
+	var question = (o_name).split('/').slice(1);
+	question.push(o_rrtype);
+	var iter = 0;
+	var rrtype = 'NS';
+	var zone = new ndn.Name();
+	var hint = new ndn.Name();
+	var lastq = false;
+
+	var onData = function (inst, co) {
+	    console.log('Data name: ' + co.name.to_uri());
 	
-	policy.verify(co, function (result) {
-		if (result == VerifyResult.FAILURE) {
-		    console.log('Verification failed.');
-		    return;
-		} else if (result == VerifyResult.TIMEOUT) {
-		    console.log('Verification failed due to timeout.');
-		    return;
-		}
-	    
-		if (lastq) {
-		    console.log('Result found.');
-		    handle.close();
-		    return;
-		}
-
-
-		var parser = new DnsParser(co.content);
-	
-		try {
-		    var packet = parser.parse();
-	    
-		    //console.log(require('util').inspect(packet, {depth: 5}));
-		    //console.log(parser.buffer.endOfBuffer());
-
-		    if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NS) {
-			var target = packet.answer[0].rdata.nsdname;
-			target = relativize(target, dnsify(zone));
-			rrtype = 'FH';
-			var qfh = generateQuestion(hint, zone, target, rrtype);
-			handle.expressInterest(qfh, null, onData, onTimeout);
-		    } else if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NEXISTS) {
-			console.log('NS does not exist.');
-			rrtype = question[question.length - 1];
-			var last = generateQuestion(hint, zone);
-			for (var i = iter; i < question.length; i++) {
-			    last.append(question[i]);
-			}
-			lastq = true;
-			handle.expressInterest(last, null, onData, onTimeout);
-		    } else if (rrtype == 'FH' && packet.answer.length > 0 && packet.answer[0].type == RRType.FH) {
-			hint = packet.answer[0].rdata.hint;
-			rrtype = 'NS';
-			zone.append(question[iter++]);
-			var qns = generateQuestion(hint, zone, question[iter], rrtype);
-			handle.expressInterest(qns, null, onData, onTimeout);
+	    policy.verify(co, function (result) {
+		    if (result == VerifyResult.FAILURE) {
+			console.log('Verification failed.');
+			return;
+		    } else if (result == VerifyResult.TIMEOUT) {
+			console.log('Verification failed due to timeout.');
+			return;
 		    }
-		} catch (e) {
-		    // Content is not a DNS packet.
-		    console.log(e.message);
-		    console.log('not a DNS packet.');
-		    handle.close();
-		}
-	    });
+		    
+		    var parser = new DnsParser(co.content);
+		    
+		    try {
+			var packet = parser.parse();
+			
+			if (lastq) {
+			    console.log('Result found. Parsed DNS packet is:');
+			    console.log(require('util').inspect(packet, {depth: 5}));
+			    handle.close();
+			    return;
+			}
+
+			//console.log(require('util').inspect(packet, {depth: 5}));
+			//console.log(parser.buffer.endOfBuffer());
+			
+			if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NS) {
+			    var target = packet.answer[0].rdata.nsdname;
+			    if (zone.isPrefixOf(ndnify(target))) {
+				target = relativize(target, dnsify(zone));
+				rrtype = 'FH';
+				var qfh = generateQuestion(hint, zone, target, rrtype);
+				handle.expressInterest(qfh, null, onData, onTimeout);
+			    } else {
+				throw new Error('NS record is in a different domain of the querying zone.');
+			    }
+			} else if (rrtype == 'NS' && packet.answer.length > 0 && packet.answer[0].type == RRType.NEXISTS) {
+			    console.log('NS does not exist.');
+			    rrtype = question[question.length - 1];
+			    var last = generateQuestion(hint, zone);
+			    for (var i = iter; i < question.length; i++) {
+				last.append(question[i]);
+			    }
+			    lastq = true;
+			    handle.expressInterest(last, null, onData, onTimeout);
+			} else if (rrtype == 'FH' && packet.answer.length > 0 && packet.answer[0].type == RRType.FH) {
+			    hint = packet.answer[0].rdata.hint;
+			    rrtype = 'NS';
+			    zone.append(question[iter++]);
+			    var qns = generateQuestion(hint, zone, question[iter], rrtype);
+			    handle.expressInterest(qns, null, onData, onTimeout);
+			}
+		    } catch (e) {
+			// Content is not a DNS packet.
+			console.log(e.message);
+			console.log('not a DNS packet.');
+			handle.close();
+		    }
+		});
+	};
+	
+	var q = generateQuestion(hint, zone, question[iter], rrtype);
+	handle.expressInterest(q, null, onData, onTimeout);
     };
+
+    handle.connect();
     
-    var q = generateQuestion(hint, zone, question[iter], rrtype);
-    handle.expressInterest(q, null, onData, onTimeout);
 };
 
-handle.connect();
+console.log('Asking for name ' + process.argv[2] + ' with rrtype ' + process.argv[3]);
+
+IterativeQuery.query(process.argv[2], process.argv[3]);
