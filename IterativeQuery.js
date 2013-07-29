@@ -5,7 +5,7 @@ var policy = require('./policy/IdentityPolicy').NdnsPolicy;
 var VerifyResult = require('./policy/IdentityPolicy').VerifyResult;
 
 if (process.argv.length != 4)
-    throw new Error('must specify an NDNS name as a command-line parameter.');
+    throw new Error('must specify an NDNS name and a RR type as command-line parameters.');
 
 
 var onTimeout = function (interest) {
@@ -31,7 +31,7 @@ var ndnify = function (str) {
 // Convert NDN Name object to DNS name string.
 var dnsify = function (name) {
     var str = '';
-    for (var i = 0; i < name.size(); i++) {
+    for (var i = name.size() - 1; i >= 0; i--) {
 	str += ndn.Name.toEscapedString(name.components[i]) + '.';
     }
     return str;
